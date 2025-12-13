@@ -37,6 +37,7 @@ The system ensures that:
 
 1. Camera-Based Attention Tracking
 To improve engagement during online lessons, SANKALP uses **camera-based attention detection**.
+To improve engagement during online lessons, SANKALP uses *camera-based attention detection*.
 
 If the system detects that the student is not attentive:
 - The lesson video automatically pauses
@@ -46,6 +47,8 @@ If the system detects that the student is not attentive:
 2. Subtopic-Level Continuous Assessment:
 Instead of conducting assessments only at the end of a chapter or term, SANKALP divides lessons into **small subtopics**.  
 Each subtopic is followed by a **short quiz**, ensuring that students understand concepts before moving forward.
+Instead of conducting assessments only at the end of a chapter or term, SANKALP divides lessons into *small subtopics*.  
+Each subtopic is followed by a *short quiz*, ensuring that students understand concepts before moving forward.
 
 This approach:
 - Encourages active learning  
@@ -64,6 +67,9 @@ The chatbot:
 - Differentiates between learning mode and assessment mode
 
 Importantly, the chatbot **does not provide direct answers during assessments, preserving evaluation integrity.
+- Differentiates between *learning mode* and *assessment mode*
+
+Importantly, the chatbot *does not provide direct answers during assessments*, preserving evaluation integrity.
 
 ---
 4. Teacher Dashboard & Analytics
@@ -74,6 +80,7 @@ Teachers are provided with a dedicated dashboard that displays:
 - Downloadable performance reports
 
 This enables early intervention and personalized guidance without increasing teacher workload.
+This enables *early intervention* and personalized guidance without increasing teacher workload.
 
 
 ---
@@ -89,4 +96,4 @@ System Modules Overview
 
 
 
-## 🏗️ High-Level Archit
+

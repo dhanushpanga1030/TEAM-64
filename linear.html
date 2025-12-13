@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Linear Equations Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background: #0d0d0d;
+      color: #f0f0f0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .game-container {
+      width: 600px;
+      max-width: 95%;
+      background: #1a1a1a;
+      border-radius: 20px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      padding: 30px;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 15px;
+      color: #ffcc00;
+    }
+    .instructions {
+      font-size: 14px;
+      color: #bbb;
+      margin-bottom: 20px;
+    }
+    #equation {
+      font-size: 24px;
+      margin: 20px 0;
+      color: #00e6e6;
+    }
+    .btn {
+      background: #333;
+      border: none;
+      color: #fff;
+      padding: 10px 20px;
+      margin: 5px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.3s;
+      font-size: 16px;
+    }
+    .btn:hover {
+      background: #555;
+    }
+    #answerInput {
+      padding: 10px;
+      border-radius: 10px;
+      border: 1px solid #555;
+      width: 80px;
+      text-align: center;
+      margin: 10px 0;
+      font-size: 18px;
+      background: #111;
+      color: #fff;
+    }
+    .status {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+    .hearts {
+      margin: 10px 0;
+      font-size: 20px;
+      color: red;
+    }
+    #level, #score {
+      font-weight: bold;
+      color: #ffcc00;
+    }
+  </style>
+</head>
+<body>
+  <div class="game-container">
+    <h1>Linear Equations Game</h1>
+    <div class="instructions">
+      Solve the equation for <b>x</b>.  
+      You have <b>5 hearts</b>. A wrong answer loses 1 heart.  
+      Complete all 10 levels to win!
+    </div>
+
+    <div id="statusScreen">
+      <button class="btn" id="startBtn">Start Game</button>
+    </div>
+
+    <div id="gameScreen" style="display:none;">
+      <div>Level: <span id="level">1</span> | Score: <span id="score">0</span></div>
+      <div class="hearts" id="hearts">❤❤❤❤❤</div>
+      <div id="equation"></div>
+      <input type="number" id="answerInput" placeholder="x ?">
+      <br>
+      <button class="btn" id="submitBtn">Submit</button>
+      <button class="btn" id="restartBtn">Restart</button>
+      <div class="status" id="statusMessage"></div>
+    </div>
+  </div>
+
+  <script>
+    const startBtn = document.getElementById("startBtn");
+    const restartBtn = document.getElementById("restartBtn");
+    const gameScreen = document.getElementById("gameScreen");
+    const statusScreen = document.getElementById("statusScreen");
+    const equationEl = document.getElementById("equation");
+    const answerInput = document.getElementById("answerInput");
+    const submitBtn = document.getElementById("submitBtn");
+    const levelEl = document.getElementById("level");
+    const scoreEl = document.getElementById("score");
+    const heartsEl = document.getElementById("hearts");
+    const statusMessage = document.getElementById("statusMessage");
+
+    let level = 1;
+    let score = 0;
+    let hearts = 5;
+    let correctAnswer = 0;
+
+    function startGame() {
+      level = 1;
+      score = 0;
+      hearts = 5;
+      updateUI();
+      statusScreen.style.display = "none";
+      gameScreen.style.display = "block";
+      generateEquation();
+    }
+
+    function restartGame() {
+      startGame();
+      statusMessage.textContent = "Game restarted!";
+    }
+
+    function updateUI() {
+      levelEl.textContent = level;
+      scoreEl.textContent = score;
+      heartsEl.textContent = "❤".repeat(hearts);
+    }
+
+    function generateEquation() {
+      // Increase difficulty by level
+      let a = Math.floor(Math.random() * level) + 1 + level; // coefficient
+      let b = Math.floor(Math.random() * (level * 2)) + 1;
+      let x = Math.floor(Math.random() * 10) + 1;
+      let c = a * x + b; // equation: ax + b = c
+
+      equationEl.textContent = `${a}x + ${b} = ${c}`;
+      correctAnswer = x;
+      answerInput.value = "";
+      statusMessage.textContent = "";
+    }
+
+    function checkAnswer() {
+      let userAnswer = parseInt(answerInput.value);
+      if (isNaN(userAnswer)) {
+        statusMessage.textContent = "Enter a number!";
+        return;
+      }
+      if (userAnswer === correctAnswer) {
+        score += 10;
+        statusMessage.textContent = "✅ Correct!";
+        if (level < 10) {
+          level++;
+          score += 20; // bonus for passing level
+          generateEquation();
+        } else {
+          statusMessage.textContent = "🎉 Congratulations! You completed all 10 levels!";
+          gameOver();
+        }
+      } else {
+        hearts--;
+        statusMessage.textContent = `❌ Wrong! You lost a heart.`;
+        if (hearts <= 0) {
+          statusMessage.textContent = "💀 Game Over! Out of hearts.";
+          gameOver();
+        }
+      }
+      updateUI();
+    }
+
+    function gameOver() {
+      gameScreen.style.display = "none";
+      statusScreen.style.display = "block";
+      statusScreen.innerHTML = `
+        <h2>Game Over</h2>
+        <p>Your final score: <b>${score}</b></p>
+        <button class="btn" id="startBtn">Play Again</button>
+      `;
+      document.getElementById("startBtn").addEventListener("click", startGame);
+    }
+
+    startBtn.addEventListener("click", startGame);
+    restartBtn.addEventListener("click", restartGame);
+    submitBtn.addEventListener("click", checkAnswer);
+  </script>
+</body>
+</html>
