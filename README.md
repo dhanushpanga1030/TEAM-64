@@ -9,6 +9,7 @@ The platform addresses one of the biggest challenges in online education —
 the lack of continuous assessment, engagement monitoring, and actionable feedback for teachers.
 Unlike traditional online learning systems that focus mainly on content delivery,
 SANKALP emphasizes learning verification, student engagement, and data-driven teaching.
+
 ---
 Problem Background
 Online education has become widely accessible, but it comes with critical limitations:
@@ -35,6 +36,7 @@ The system ensures that:
 ⭐ Key Features Explained
 
 1. Camera-Based Attention Tracking
+To improve engagement during online lessons, SANKALP uses **camera-based attention detection**.
 To improve engagement during online lessons, SANKALP uses *camera-based attention detection*.
 
 If the system detects that the student is not attentive:
@@ -43,6 +45,8 @@ If the system detects that the student is not attentive:
  This feature helps reduce distractions and promotes focused learning, especially in home-based online education.
 ------
 2. Subtopic-Level Continuous Assessment:
+Instead of conducting assessments only at the end of a chapter or term, SANKALP divides lessons into **small subtopics**.  
+Each subtopic is followed by a **short quiz**, ensuring that students understand concepts before moving forward.
 Instead of conducting assessments only at the end of a chapter or term, SANKALP divides lessons into *small subtopics*.  
 Each subtopic is followed by a *short quiz*, ensuring that students understand concepts before moving forward.
 
@@ -60,6 +64,9 @@ The chatbot:
 - Provides examples and hints
 - Generates practice questions
 - Supports multiple languages
+- Differentiates between learning mode and assessment mode
+
+Importantly, the chatbot **does not provide direct answers during assessments, preserving evaluation integrity.
 - Differentiates between *learning mode* and *assessment mode*
 
 Importantly, the chatbot *does not provide direct answers during assessments*, preserving evaluation integrity.
@@ -72,6 +79,7 @@ Teachers are provided with a dedicated dashboard that displays:
 - Engagement and attention metrics
 - Downloadable performance reports
 
+This enables early intervention and personalized guidance without increasing teacher workload.
 This enables *early intervention* and personalized guidance without increasing teacher workload.
 
 
@@ -85,4 +93,7 @@ System Modules Overview
 - Teacher Module– Dashboard and reports
 
 ---
+
+
+
 
