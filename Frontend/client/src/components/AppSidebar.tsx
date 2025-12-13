@@ -11,7 +11,8 @@ import {
   LogOut,
   GraduationCap,
   BarChart3,
-  FileDown
+  FileDown,
+  Film
 } from "lucide-react";
 import {
   Sidebar,
@@ -89,6 +90,12 @@ export function AppSidebar({
       title: 'Leaderboard',
       icon: Trophy,
       description: 'Compare with classmates'
+    },
+    {
+      id: 'video-player',
+      title: 'Lesson Videos',
+      icon: Film,
+      description: 'Watch lesson videos with attention tracking'
     }
   ];
 
