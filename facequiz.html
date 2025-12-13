@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Attention-Aware Video Player with Quizzes</title>
+  <style>
+    body {font-family: Arial, sans-serif; background:#f0f2f5; text-align:center; margin:0; padding:20px;}
+    h1 {color:#1a1a1a;}
+    video {border:2px solid #333; border-radius:8px; margin:10px; max-width:600px;}
+    #status {font-size:1.2em; margin-top:15px; font-weight:bold; padding:10px; border-radius:8px; background:#e9ecef; display:inline-block;}
+    .alert {background:#dc3545; color:#fff;}
+
+    /* Modal */
+    .modal-backdrop {position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); display:flex; justify-content:center; align-items:center; z-index:1000;}
+    .modal {background:#fff; padding:20px; border-radius:10px; max-width:400px; text-align:left;}
+    .modal h2{margin-top:0;}
+    .options{margin:10px 0;}
+    .options label{display:block; margin:6px 0;}
+    .feedback{margin:10px 0; font-weight:bold;}
+    .feedback.correct{color:green;}
+    .feedback.wrong{color:red;}
+    .btn{padding:8px 14px; border:none; border-radius:6px; cursor:pointer;}
+    .btn.primary{background:#007bff; color:#fff;}
+  </style>
+
+  <!-- ✅ Mediapipe -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js"></script>
+
+  <!-- ✅ TensorFlow + USE -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.21.0/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/universal-sentence-encoder"></script>
+</head>
+<body>
+  <h1>🎥 Attention-Aware Video with Quizzes</h1>
+
+  <!-- Main lesson video with subtitles -->
+  <video id="videoPlayer" playsinline controls autoplay muted>
+    <source src="assets/lesson.mp4" type="video/mp4">
+    <track id="subtitleTrack" src="assets/lesson.vtt" kind="subtitles" srclang="en" label="English" default>
+  </video>
+  <br>
+
+  <!-- Webcam -->
+  <video id="webcam" autoplay playsinline muted width="400" height="300"></video>
+  <p id="status">STATUS: Initializing...</p>
+
+  <!-- Quiz Modal Root -->
+  <div id="modal-root" style="display:none;"></div>
+
+<script>
+const videoPlayer=document.getElementById("videoPlayer");
+const webcam=document.getElementById("webcam");
+const statusEl=document.getElementById("status");
+const modalRoot=document.getElementById("modal-root");
+
+let eyeClosedStart=null;
+const EAR_THRESHOLD=0.2, DROWSY_TIME=2000;
+
+function distance(p1,p2){return Math.sqrt((p1.x-p2.x)**2+(p1.y-p2.y)**2);}
+function calculateEAR(eye){
+  const vertical=distance(eye[1],eye[5])+distance(eye[2],eye[4]);
+  const horizontal=distance(eye[0],eye[3]);
+  return vertical/(2.0*horizontal);
+}
+
+function onResults(results){
+  if(!results.multiFaceLandmarks || results.multiFaceLandmarks.length===0){
+    if(!videoPlayer.paused) videoPlayer.pause();
+    statusEl.textContent="STATUS: Face not detected 🛑";
+    statusEl.classList.add("alert");
+    return;
+  }
+  const keypoints=results.multiFaceLandmarks[0];
+  const leftEyeIdx=[33,160,158,133,153,144];
+  const rightEyeIdx=[362,385,387,263,373,380];
+  const leftEAR=calculateEAR(leftEyeIdx.map(i=>keypoints[i]));
+  const rightEAR=calculateEAR(rightEyeIdx.map(i=>keypoints[i]));
+  const avgEAR=(leftEAR+rightEAR)/2;
+
+  if(avgEAR<EAR_THRESHOLD){
+    if(eyeClosedStart===null) eyeClosedStart=Date.now();
+    if(Date.now()-eyeClosedStart>DROWSY_TIME){
+      if(!videoPlayer.paused) videoPlayer.pause();
+      statusEl.textContent="😴 Drowsy! Video Paused.";
+      statusEl.classList.add("alert");
+    }else{
+      statusEl.textContent="STATUS: Eyes closing...";
+      statusEl.classList.remove("alert");
+    }
+  }else{
+    eyeClosedStart=null;
+    statusEl.textContent="STATUS: Attentive ✅";
+    statusEl.classList.remove("alert");
+    if(videoPlayer.paused && modalRoot.style.display==="none") videoPlayer.play();
+  }
+}
+
+async function init(){
+  const faceMesh=new FaceMesh({locateFile:(f)=>`https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${f}`});
+  faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+  faceMesh.onResults(onResults);
+
+  const camera=new Camera(webcam,{onFrame:async()=>{await faceMesh.send({image:webcam});},width:400,height:300});
+  camera.start();
+  statusEl.textContent="STATUS: Ready ✅";
+
+  useModel=await use.load();
+}
+init();
+
+// -------- Transcript Buffer --------
+let transcriptHistory=[];
+const track=document.getElementById("subtitleTrack");
+track.addEventListener("load",()=>{
+  const textTrack=videoPlayer.textTracks[0];
+  textTrack.mode="hidden";
+  textTrack.oncuechange=()=>{
+    const cue=textTrack.activeCues[0];
+    if(cue){
+      transcriptHistory.push({time:videoPlayer.currentTime,text:cue.text});
+      const cutoff=videoPlayer.currentTime-600;
+      transcriptHistory=transcriptHistory.filter(t=>t.time>=cutoff);
+    }
+  };
+});
+function getRecentTranscript(seconds=120){
+  const cutoff=videoPlayer.currentTime-seconds;
+  return transcriptHistory.filter(t=>t.time>=cutoff).map(t=>t.text).join(" ");
+}
+
+// -------- Quiz Logic --------
+let useModel=null;
+let lastQuizTime=0, pendingQuizzes=0;
+
+async function pickConcept(text){
+  if(!useModel) return text;
+  const sentences=text.split(/[.?!]/).map(s=>s.trim()).filter(Boolean);
+  if(sentences.length===0) return text;
+  const embeddings=await useModel.embed(sentences);
+  const norms=await embeddings.norm("euclidean",1);
+  const arr=await norms.array();
+  const idx=arr.indexOf(Math.max(...arr));
+  return sentences[idx];
+}
+function makeDistractors(correct,context){
+  const words=context.split(/\s+/).filter(w=>w.length>3 && w!==correct);
+  const uniq=[...new Set(words)];
+  shuffle(uniq);
+  return uniq.slice(0,2).concat(["None of the above"]);
+}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}}
+
+async function triggerQuiz(){
+  videoPlayer.pause(); // stop first
+  const text=getRecentTranscript(120)||"the lesson so far";
+  const concept=await pickConcept(text);
+  const correct=concept.split(" ")[0];
+  const options=[correct,...makeDistractors(correct,text)];
+  shuffle(options);
+  showMCQModal(`What is related to: "${concept}"?`,correct,options);
+}
+
+function showMCQModal(question,correct,options){
+  videoPlayer.pause(); // safety
+  modalRoot.style.display="block";
+  modalRoot.innerHTML=`
+  <div class="modal-backdrop"><div class="modal">
+    <h2>Quick Quiz</h2>
+    <p>${question}</p>
+    <div class="options">
+      ${options.map(opt=>`<label><input type="radio" name="mcq" value="${opt}"> ${opt}</label>`).join("")}
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="controls"><button class="btn primary" id="submitBtn">Submit</button></div>
+  </div></div>`;
+  document.getElementById("submitBtn").onclick=()=>{
+    const sel=document.querySelector('input[name="mcq"]:checked');
+    const fb=document.getElementById("feedback");
+    if(!sel){fb.textContent="Select an option!";return;}
+    if(sel.value===correct){fb.textContent="✅ Correct!";fb.className="feedback correct";}
+    else{fb.textContent=`❌ Wrong! Correct: ${correct}`;fb.className="feedback wrong";}
+    setTimeout(()=>{closeModal();},2000);
+  };
+}
+function closeModal(){
+  modalRoot.style.display="none";
+  modalRoot.innerHTML="";
+  if(pendingQuizzes>0){pendingQuizzes--;triggerQuiz();}
+  else if(statusEl.className!=="alert"){videoPlayer.play();}
+}
+
+// -------- Time-based Quiz Trigger --------
+videoPlayer.addEventListener("timeupdate",()=>{
+  if(videoPlayer.currentTime-lastQuizTime>=120){
+    lastQuizTime=videoPlayer.currentTime;
+    triggerQuiz();
+  }
+});
+// -------- Skip Detection --------
+let lastSeen=0;
+videoPlayer.addEventListener("seeked",()=>{
+  if(videoPlayer.currentTime-lastSeen>150){
+    const skips=Math.floor((videoPlayer.currentTime-lastSeen)/120);
+    pendingQuizzes+=skips;
+    if(modalRoot.style.display==="none") triggerQuiz();
+  }
+  lastSeen=videoPlayer.currentTime;
+});
+</script>
+</body>
+</html>
