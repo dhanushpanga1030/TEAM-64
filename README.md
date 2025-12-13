@@ -3,11 +3,13 @@ SANKALP
 
 ---
 Introduction 
+
 SANKALP is an AI-powered online education assessment aid platform designed to improve the quality of STEM learning for school students (Grades 6–12).  
 The platform addresses one of the biggest challenges in online education — 
 the lack of continuous assessment, engagement monitoring, and actionable feedback for teachers.
 Unlike traditional online learning systems that focus mainly on content delivery,
 SANKALP emphasizes learning verification, student engagement, and data-driven teaching.
+
 ---
 Problem Background
 Online education has become widely accessible, but it comes with critical limitations:
@@ -17,7 +19,6 @@ Online education has become widely accessible, but it comes with critical limita
 - Weak topics and struggling students are identified too late.
 - Engagement levels during online classes are difficult to track.
 - Language barriers reduce comprehension for students from regional backgrounds.
-
 These issues highlight the need for a smart assessment-oriented learning system rather than a content-only platform.
 ---
 Proposed Solution
@@ -40,8 +41,7 @@ To improve engagement during online lessons, SANKALP uses **camera-based attenti
 If the system detects that the student is not attentive:
 - The lesson video automatically pauses
 - Attention data is recorded for analytics
-
-This feature helps reduce distractions and promotes focused learning, especially in home-based online education.
+ This feature helps reduce distractions and promotes focused learning, especially in home-based online education.
 ------
 2. Subtopic-Level Continuous Assessment:
 Instead of conducting assessments only at the end of a chapter or term, SANKALP divides lessons into **small subtopics**.  
@@ -61,9 +61,9 @@ The chatbot:
 - Provides examples and hints
 - Generates practice questions
 - Supports multiple languages
-- Differentiates between **learning mode** and **assessment mode**
+- Differentiates between learning mode and assessment mode
 
-Importantly, the chatbot **does not provide direct answers during assessments**, preserving evaluation integrity.
+Importantly, the chatbot **does not provide direct answers during assessments, preserving evaluation integrity.
 
 ---
 4. Teacher Dashboard & Analytics
@@ -73,7 +73,7 @@ Teachers are provided with a dedicated dashboard that displays:
 - Engagement and attention metrics
 - Downloadable performance reports
 
-This enables **early intervention** and personalized guidance without increasing teacher workload.
+This enables early intervention and personalized guidance without increasing teacher workload.
 
 
 ---
@@ -89,4 +89,4 @@ System Modules Overview
 
 
 
-## 🏗️ High-Level Architecture
+## 🏗️ High-Level Archit
