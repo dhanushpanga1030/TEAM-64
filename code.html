@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Stickman Coding — Learn Basic Code</title>
+<style>
+  :root{
+    --bg:#05060a; --panel:#0d1114; --neon-a:#4ee8ff; --neon-b:#7cff6b; --accent:#ffd166; --muted:#9fb0c6;
+  }
+  html,body{height:100%;margin:0;background:var(--bg);color:#dff3ff;font-family:Inter,Segoe UI,Arial,sans-serif;}
+  .wrap{max-width:1100px;margin:18px auto;padding:18px;display:grid;grid-template-columns:360px 1fr;gap:18px;}
+  .card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));border:1px solid rgba(255,255,255,0.04);padding:14px;border-radius:12px;}
+  h1{margin:0 0 8px 0;font-size:20px;}
+  .hud{display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:8px;}
+  .score{background:linear-gradient(90deg,rgba(78,232,255,0.06),rgba(124,255,107,0.03));padding:8px 12px;border-radius:10px;color:var(--neon-a);font-weight:700;}
+  .level{background:rgba(255,209,102,0.04);padding:8px 12px;border-radius:10px;color:var(--accent);font-weight:700;}
+  .controls{display:flex;gap:8px;margin-top:10px;}
+  .btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:#dff3ff;padding:8px 10px;border-radius:8px;cursor:pointer;font-weight:600;}
+  .btn.primary{background:linear-gradient(90deg,var(--neon-a),var(--neon-b));color:#071216;border:none;box-shadow:0 6px 18px rgba(0,0,0,0.6);}
+  .small{font-size:13px;color:var(--muted);}
+  .hearts{font-size:18px;color:#ff6b6b;font-weight:700;}
+  .goal{margin-top:10px;padding:10px;background:rgba(255,255,255,0.02);border-radius:10px;color:var(--muted);}
+  .canvasWrap{display:flex;flex-direction:column;align-items:center;}
+  canvas{border-radius:10px;background:linear-gradient(180deg,#05060a,#0b0f12);display:block;box-shadow:0 12px 30px rgba(0,0,0,0.6);border:2px solid rgba(255,255,255,0.03);}
+  .legend{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;}
+  .chip{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,0.03);font-weight:700;color:var(--neon-a);border:1px solid rgba(0,229,255,0.06);}
+  .progressBar{height:12px;background:rgba(255,255,255,0.03);border-radius:10px;overflow:hidden;margin-top:10px;}
+  .progress{height:100%;background:linear-gradient(90deg,var(--neon-a),var(--neon-b));width:0%;}
+  footer{grid-column:span 2;margin-top:10px;text-align:center;color:rgba(255,255,255,0.12);font-size:13px;}
+  @media(max-width:880px){.wrap{grid-template-columns:1fr}.card{margin-bottom:10px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <!-- LEFT: Info/UI -->
+  <div class="card">
+    <h1>🧑‍💻 Stickman — Basic Coding (Grade 9)</h1>
+    <div class="hud">
+      <div>
+        <div class="score" id="scoreUI">Score: 0</div>
+        <div class="small" id="collectedUI" style="margin-top:6px">Collected: —</div>
+      </div>
+      <div style="text-align:right">
+        <div class="level" id="levelUI">Level 1 / 20</div>
+        <div class="hearts" id="heartsUI">♥♥♥♥♥</div>
+      </div>
+    </div>
+
+    <div class="goal" id="goalUI">Goal: —</div>
+
+    <div class="controls">
+      <button id="startBtn" class="btn primary">Start</button>
+      <button id="pauseBtn" class="btn">Pause</button>
+      <button id="restartBtn" class="btn">Restart</button>
+      <div style="flex:1"></div>
+    </div>
+
+    <div class="progressBar"><div id="progressBar" class="progress"></div></div>
+
+    <div style="margin-top:12px">
+      <div class="small" style="font-weight:700;margin-bottom:6px">How to play</div>
+      <div class="small">Use ← and → to move the stickman. Catch the <strong>correct code tokens</strong> (shown in goal). Wrong tokens cost a heart. Finish the level to gain bonus points and advance — 20 levels total.</div>
+    </div>
+
+    <div style="margin-top:12px">
+      <div class="small" style="font-weight:700;margin-bottom:6px">Tokens (examples)</div>
+      <div class="legend">
+        <div class="chip">for</div>
+        <div class="chip">if</div>
+        <div class="chip">var</div>
+        <div class="chip">let</div>
+        <div class="chip">function</div>
+        <div class="chip">()</div>
+        <div class="chip">{}</div>
+        <div class="chip">=</div>
+        <div class="chip">;</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- RIGHT: Canvas -->
+  <div class="card canvasWrap">
+    <canvas id="gameCanvas" width="860" height="480"></canvas>
+    <div style="display:flex;gap:10px;margin-top:12px;align-items:center;width:100%;">
+      <div class="small">Controls: ← →</div>
+      <div style="flex:1"></div>
+      <div class="small" id="statusUI">Status: Ready</div>
+    </div>
+  </div>
+
+  <footer>Save the file in VS Code and open with Live Server (recommended) or open in your browser. Enjoy teaching coding!</footer>
+</div>
+
+<script>
+/* --------------- CONFIG --------------- */
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const POINT_PER_CORRECT = 12;
+const PENALTY_WRONG = 6;
+const LEVEL_BONUS = 120;
+const START_HEARTS = 5;
+const MAX_LEVELS = 20;
+
+/* --------------- LEVELS (coding tokens) --------------- */
+/* Each level has a name and a recipe: tokens to collect.
+   Token strings appear on falling objects exactly as shown.
+*/
+const levels = [
+  {name:"Print Statement", recipe:{"console.log":1,"()":1,";":1}},
+  {name:"Variable (var)", recipe:{"var":1,"=":1,";":1}},
+  {name:"Variable (let)", recipe:{"let":1,"=":1,";":1}},
+  {name:"If Statement", recipe:{"if":1,"()":1,"{}":1}},
+  {name:"For Loop", recipe:{"for":1,"()":1,"{}":1}},
+  {name:"Function Definition", recipe:{"function":1,"()":1,"{}":1}},
+  {name:"Return Value", recipe:{"return":1,";":1}},
+  {name:"Array Create", recipe:{"[ ]":1,"var":1,";":1}},
+  {name:"Object Create", recipe:{"{ }":1,"var":1,";":1}},
+  {name:"Comparison", recipe:{"==":1,"if":1,"()":1}},
+  {name:"Strict Comparison", recipe:{"===":1,"if":1,"()":1}},
+  {name:"Increment", recipe:{"++":1,"for":1,"()":1}},
+  {name:"Decrement", recipe:{"--":1,"for":1,"()":1}},
+  {name:"Assignment", recipe:{"=":1,"var":1,";":1}},
+  {name:"Logical AND", recipe:{"&&":1,"if":1,"()":1}},
+  {name:"Logical OR", recipe:{"||":1,"if":1,"()":1}},
+  {name:"Switch Case", recipe:{"switch":1,"()":1,"{}":1}},
+  {name:"Try Catch", recipe:{"try":1,"catch":1,"{}":1}},
+  {name:"Async Prep", recipe:{"async":1,"function":1,"()":1}},
+  {name:"Arrow Fn", recipe:{"=>":1,"()":1,";":1}}
+];
+
+/* --------------- STATE --------------- */
+let state = {
+  levelIndex: 0,
+  score: 0,
+  hearts: START_HEARTS,
+  objects: [],
+  collected: {},
+  running: false,
+  spawnTimer: null,
+  lastSpawnDelay: 1100,
+  stick: {x: 410, y: 400, w: 48, h: 60},
+  keys: {},
+  paused: false
+};
+
+/* UI refs */
+const scoreUI = document.getElementById('scoreUI');
+const levelUI = document.getElementById('levelUI');
+const heartsUI = document.getElementById('heartsUI');
+const goalUI = document.getElementById('goalUI');
+const collectedUI = document.getElementById('collectedUI');
+const startBtn = document.getElementById('startBtn');
+const pauseBtn = document.getElementById('pauseBtn');
+const restartBtn = document.getElementById('restartBtn');
+const statusUI = document.getElementById('statusUI');
+const progressBar = document.getElementById('progressBar');
+
+/* --------------- UTIL FUNCTIONS --------------- */
+function formatRecipe(recipe){
+  return Object.entries(recipe).map(([k,v]) => `${v}×${k}`).join(' + ');
+}
+function updateUI(){
+  scoreUI.textContent = `Score: ${state.score}`;
+  levelUI.textContent = `Level ${state.levelIndex+1} / ${MAX_LEVELS}`;
+  heartsUI.textContent = '♥'.repeat(state.hearts);
+  const level = levels[state.levelIndex];
+  goalUI.textContent = `Goal: ${level.name} → ${formatRecipe(level.recipe)}`;
+  const parts = [];
+  for (let k in level.recipe){
+    const have = state.collected[k] || 0;
+    parts.push(`${k}: ${have}/${level.recipe[k]}`);
+  }
+  collectedUI.textContent = `Collected: ${parts.join(' · ')}`;
+  // progress
+  const need = Object.values(level.recipe).reduce((a,b)=>a+b,0);
+  const have = Object.keys(level.recipe).reduce((s,k)=> s + Math.min(state.collected[k]||0, level.recipe[k]), 0);
+  progressBar.style.width = `${Math.round((have/need)*100)}%`;
+}
+
+/* --------------- GAME LOGIC --------------- */
+function resetCollected(){
+  state.collected = {};
+  const recipe = levels[state.levelIndex].recipe;
+  for (let k in recipe) state.collected[k]=0;
+}
+
+function spawnObject(){
+  // pool: correct tokens + distractors
+  const pool = [
+    "console.log","()",";","var","let","if","for","function","{}","{ }",
+    "return","[ ]","{ }","==","===","++","--","=","&&","||","switch",
+    "try","catch","async","=>","class","new","this",";",":"
+  ];
+  // Add more distractors as level increases (increase variety)
+  const recipe = levels[state.levelIndex].recipe;
+  const weighted = [];
+  pool.forEach(p=>{
+    let w = 1;
+    if (recipe[p]) w += recipe[p]*3;        // needed tokens get higher weight
+    // make common tokens slightly more likely
+    if ([";","()","{}","="].includes(p)) w += 1;
+    // level scaling: add more distractors weight
+    if (state.levelIndex > 8 && Math.random() < state.levelIndex/40) w += 1;
+    for (let i=0;i<w;i++) weighted.push(p);
+  });
+  const type = weighted[Math.floor(Math.random()*weighted.length)];
+  const obj = {
+    type,
+    x: Math.random() * (canvas.width - 60) + 20,
+    y: -22,
+    speed: 1 + 0.65*state.levelIndex + Math.random()*1.6
+  };
+  state.objects.push(obj);
+}
+
+function clamp(v,a,b){ return Math.max(a, Math.min(b, v)); }
+
+function collectObject(obj){
+  const level = levels[state.levelIndex];
+  // match exact token
+  if (level.recipe[obj.type] !== undefined){
+    state.collected[obj.type] = (state.collected[obj.type] || 0) + 1;
+    state.score += POINT_PER_CORRECT;
+    statusUI.textContent = `Good! +${POINT_PER_CORRECT}`;
+  } else {
+    state.hearts -= 1;
+    state.score = Math.max(0, state.score - PENALTY_WRONG);
+    statusUI.textContent = `Wrong! -1 heart, -${PENALTY_WRONG} pts`;
+    if (state.hearts <= 0){
+      gameOver();
+      return;
+    }
+  }
+  updateUI();
+  checkLevelComplete();
+}
+
+function checkLevelComplete(){
+  const level = levels[state.levelIndex];
+  for (let k in level.recipe){
+    if ((state.collected[k] || 0) < level.recipe[k]) return;
+  }
+  // Completed
+  state.score += LEVEL_BONUS;
+  statusUI.textContent = `Level complete! +${LEVEL_BONUS} bonus`;
+  // short pause then next level
+  pauseGameFor(900, ()=>{
+    state.levelIndex++;
+    if (state.levelIndex >= MAX_LEVELS || state.levelIndex >= levels.length){
+      alert(`Awesome! You finished all ${Math.min(MAX_LEVELS,levels.length)} levels!\nFinal Score: ${state.score}`);
+      restartGame();
+      return;
+    }
+    prepareNextLevel();
+  });
+}
+
+function prepareNextLevel(){
+  state.objects = [];
+  resetCollected();
+  state.lastSpawnDelay = Math.max(340, 1200 - state.levelIndex * 44);
+  updateUI();
+}
+
+/* --------------- RENDER & LOOP --------------- */
+function render(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // subtle background
+  ctx.fillStyle = "#06070a";
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ground hint
+  ctx.strokeStyle = "rgba(78,232,255,0.05)";
+  ctx.beginPath(); ctx.moveTo(0,460); ctx.lineTo(canvas.width,460); ctx.stroke();
+
+  // stickman
+  drawStickman(state.stick.x, state.stick.y);
+
+  // objects
+  for (let o of state.objects) drawToken(o);
+}
+
+function drawStickman(x,y){
+  ctx.save(); ctx.translate(x, y);
+  ctx.strokeStyle = "rgba(215,245,255,0.95)"; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.arc(24,10,10,0,Math.PI*2); ctx.stroke(); // head
+  ctx.beginPath(); ctx.moveTo(24,20); ctx.lineTo(24,40); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(24,26); ctx.lineTo(6,32); ctx.moveTo(24,26); ctx.lineTo(42,32); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(24,40); ctx.lineTo(8,56); ctx.moveTo(24,40); ctx.lineTo(40,56); ctx.stroke();
+  ctx.restore();
+}
+
+function drawToken(o){
+  ctx.save();
+  const w = Math.max(48, (o.type.length*8)+24);
+  const h = 26;
+  // color palette mapping
+  const pal = tokenColor(o.type);
+  ctx.shadowBlur = 16; ctx.shadowColor = pal[0];
+  roundRect(ctx, o.x, o.y, w, h, 8, true, false, pal[0]);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = pal[1];
+  roundRect(ctx, o.x+2, o.y+3, w-4, h-6, 6, true, false, pal[1]);
+  ctx.fillStyle = "#031017";
+  ctx.font = "600 14px Inter,Arial";
+  ctx.textAlign = "center"; ctx.textBaseline = "middle";
+  ctx.fillText(o.type, o.x + w/2, o.y + h/2);
+  ctx.restore();
+}
+function tokenColor(t){
+  // set different hues for key token types
+  if (["for","if","switch","try","catch"].includes(t)) return ['#7cff6b','#2e5e10'];
+  if (["function","=>","async"].includes(t)) return ['#4ee8ff','#0b4b54'];
+  if (["var","let","return","="].includes(t)) return ['#ffd166','#6a4a04'];
+  if (["console.log",";","()","{}","{ }","[ ]"].includes(t)) return ['#ff8ad6','#5a2a4d'];
+  if (["==","===","&&","||","++","--"].includes(t)) return ['#b58cff','#402a6d'];
+  return ['#aab8ff','#2c3560'];
+}
+function roundRect(ctx, x, y, w, h, r, fill, stroke, color){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill){ ctx.fillStyle = color || "#fff"; ctx.fill(); }
+  if (stroke) ctx.stroke();
+}
+
+/* game loop */
+let lastTime = 0;
+function gameLoop(ts){
+  if (!state.running || state.paused){ lastTime = ts; requestAnimationFrame(gameLoop); return; }
+  const dt = ts - lastTime; lastTime = ts;
+  // movement
+  if (state.keys.ArrowLeft) state.stick.x -= 6;
+  if (state.keys.ArrowRight) state.stick.x += 6;
+  state.stick.x = clamp(state.stick.x, 0, canvas.width - state.stick.w);
+
+  // update objects
+  for (let i = state.objects.length - 1; i >= 0; i--){
+    const o = state.objects[i];
+    o.y += o.speed * (dt/16);
+    if (o.y + 18 >= state.stick.y && o.y <= state.stick.y + state.stick.h){
+      if (o.x + 24 > state.stick.x && o.x < state.stick.x + state.stick.w){
+        collectObject(o);
+        state.objects.splice(i,1);
+        continue;
+      }
+    }
+    if (o.y > canvas.height + 30) state.objects.splice(i,1);
+  }
+  render();
+  requestAnimationFrame(gameLoop);
+}
+
+/* --------------- INPUT --------------- */
+window.addEventListener('keydown', e => state.keys[e.key] = true);
+window.addEventListener('keyup', e => state.keys[e.key] = false);
+
+/* --------------- CONTROL BUTTONS --------------- */
+startBtn.addEventListener('click', startGame);
+pauseBtn.addEventListener('click', togglePause);
+restartBtn.addEventListener('click', ()=>{
+  if (confirm("Restart game?")) restartGame();
+});
+
+/* --------------- SPAWN LOOP --------------- */
+function startSpawnLoop(){
+  clearSpawnLoop();
+  state.lastSpawnDelay = Math.max(320, 1200 - state.levelIndex * 44);
+  state.spawnTimer = setInterval(()=>{
+    if (!state.running || state.paused) return;
+    spawnObject();
+    // occasionally shorten delay to intensify
+    const newDelay = Math.max(300, 1200 - state.levelIndex*48 - Math.random()*300);
+    if (Math.abs(newDelay - state.lastSpawnDelay) > 0.1){
+      clearSpawnLoop();
+      state.lastSpawnDelay = newDelay;
+      startSpawnLoop();
+    }
+  }, state.lastSpawnDelay);
+}
+function clearSpawnLoop(){ if (state.spawnTimer){ clearInterval(state.spawnTimer); state.spawnTimer = null; } }
+
+/* --------------- PAUSE / START / RESTART --------------- */
+function startGame(){
+  if (!state.running){
+    // initialize
+    state.levelIndex = 0; state.score = 0; state.hearts = START_HEARTS; state.objects = [];
+    resetCollected();
+    state.stick.x = (canvas.width - state.stick.w)/2;
+    state.lastSpawnDelay = 1100;
+  }
+  state.running = true; state.paused = false;
+  statusUI.textContent = "Running";
+  startSpawnLoop();
+  lastTime = performance.now();
+  requestAnimationFrame(gameLoop);
+  updateUI();
+}
+function togglePause(){
+  if (!state.running) return;
+  state.paused = !state.paused;
+  statusUI.textContent = state.paused ? "Paused" : "Running";
+  if (!state.paused){ lastTime = performance.now(); requestAnimationFrame(gameLoop); }
+}
+function restartGame(){
+  state.running = false; clearSpawnLoop();
+  state.levelIndex = 0; state.score = 0; state.hearts = START_HEARTS; state.objects = [];
+  resetCollected(); updateUI(); statusUI.textContent = "Ready";
+  render();
+}
+
+/* --------------- COLLECTION & LEVELS --------------- */
+function collectObject(obj){
+  const level = levels[state.levelIndex];
+  if (level.recipe[obj.type] !== undefined){
+    state.collected[obj.type] = (state.collected[obj.type] || 0) + 1;
+    state.score += POINT_PER_CORRECT;
+    statusUI.textContent = `Great +${POINT_PER_CORRECT}`;
+  } else {
+    state.hearts -= 1;
+    state.score = Math.max(0, state.score - PENALTY_WRONG);
+    statusUI.textContent = `Oops -1 heart, -${PENALTY_WRONG}`;
+    if (state.hearts <= 0){ gameOver(); return; }
+  }
+  updateUI();
+  checkLevelComplete();
+}
+
+function checkLevelComplete(){
+  const level = levels[state.levelIndex];
+  for (let k in level.recipe) if ((state.collected[k]||0) < level.recipe[k]) return;
+  state.score += LEVEL_BONUS;
+  statusUI.textContent = `Level ${state.levelIndex+1} complete! +${LEVEL_BONUS}`;
+  pauseGameFor(900, ()=>{
+    state.levelIndex++;
+    if (state.levelIndex >= MAX_LEVELS || state.levelIndex >= levels.length){
+      alert(`You completed all levels!\nFinal score: ${state.score}`);
+      restartGame(); return;
+    }
+    prepareNext();
+  });
+}
+
+function prepareNext(){
+  state.objects = [];
+  resetCollected();
+  state.lastSpawnDelay = Math.max(320, 1200 - state.levelIndex*44);
+  updateUI();
+}
+
+/* --------------- GAMEOVER & HELPERS --------------- */
+function gameOver(){
+  clearSpawnLoop(); state.running = false;
+  statusUI.textContent = "Game Over";
+  alert(`Game Over — Score: ${state.score}`);
+  restartGame();
+}
+function pauseGameFor(ms, cb){
+  state.paused = true; statusUI.textContent = "Preparing next level...";
+  setTimeout(()=>{ state.paused = false; statusUI.textContent = "Running"; cb && cb(); }, ms);
+}
+
+/* --------------- DRAW HELPERS --------------- */
+function tokenColor(t){
+  if (["for","if","switch","try","catch"].includes(t)) return ['#7cff6b','#2e5e10'];
+  if (["function","async","=>"].includes(t)) return ['#4ee8ff','#0b4b54'];
+  if (["var","let","return","="].includes(t)) return ['#ffd166','#6a4a04'];
+  if (["console.log",";","()","{}","[ ]","{ }"].includes(t)) return ['#ff8ad6','#5a2a4d'];
+  if (["==","===","&&","||","++","--"].includes(t)) return ['#b58cff','#402a6d'];
+  return ['#aab8ff','#2c3560'];
+}
+
+/* --------------- INIT --------------- */
+resetCollected(); updateUI(); render();
+statusUI.textContent = "Ready";
+setInterval(updateUI, 200);
+
+</script>
+</body>
+</html>
