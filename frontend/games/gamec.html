@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stickman Atom Game</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+      text-align: center;
+    }
+    #gameCanvas {
+      background: #222;
+      display: block;
+      margin: auto;
+      border: 2px solid white;
+    }
+    #ui {
+      margin: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      max-width: 600px;
+      margin-left: auto;
+      margin-right: auto;
+      color: white;
+    }
+    #instructions {
+      margin: 10px;
+      font-size: 16px;
+    }
+    button {
+      padding: 5px 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    #hearts {
+      font-size: 20px;
+      color: red;
+    }
+  </style>
+</head>
+<body>
+  <h1>Stickman Atom Game</h1>
+  <div id="ui">
+    <div id="score">Score: 0</div>
+    <div id="hearts">♥♥♥♥♥</div>
+    <button id="restartBtn">Restart</button>
+  </div>
+  <div id="instructions">Use ← and → arrows to move. Catch the right atoms to build molecules!</div>
+  <div id="goal">Goal: H₂O (2H + 1O)</div>
+  <canvas id="gameCanvas" width="600" height="400"></canvas>
+
+  <script>
+    const canvas = document.getElementById("gameCanvas");
+    const ctx = canvas.getContext("2d");
+
+    let stickman = { x: 280, y: 350, width: 40, height: 50 };
+    let keys = {};
+    let objects = [];
+    let score = 0;
+    let level = 1;
+    let hearts = 5;
+    let collected = {};
+    let gameActive = true;
+
+    // 20 levels with molecules
+    const levels = [
+      { name: "H₂O", recipe: { H: 2, O: 1 } },
+      { name: "O₂", recipe: { O: 2 } },
+      { name: "CO₂", recipe: { C: 1, O: 2 } },
+      { name: "CH₄", recipe: { C: 1, H: 4 } },
+      { name: "NH₃", recipe: { N: 1, H: 3 } },
+      { name: "C₂H₆", recipe: { C: 2, H: 6 } },
+      { name: "N₂", recipe: { N: 2 } },
+      { name: "H₂", recipe: { H: 2 } },
+      { name: "C₂H₄", recipe: { C: 2, H: 4 } },
+      { name: "C₂H₂", recipe: { C: 2, H: 2 } },
+      { name: "H₂O₂", recipe: { H: 2, O: 2 } },
+      { name: "NO₂", recipe: { N: 1, O: 2 } },
+      { name: "N₂O", recipe: { N: 2, O: 1 } },
+      { name: "C₆H₆", recipe: { C: 6, H: 6 } },
+      { name: "C₂H₅OH", recipe: { C: 2, H: 6, O: 1 } },
+      { name: "HNO₃", recipe: { H: 1, N: 1, O: 3 } },
+      { name: "NaCl", recipe: { Na: 1, Cl: 1 } },
+      { name: "KCl", recipe: { K: 1, Cl: 1 } },
+      { name: "CaCO₃", recipe: { Ca: 1, C: 1, O: 3 } },
+      { name: "H₂SO₄", recipe: { H: 2, S: 1, O: 4 } },
+    ];
+
+    let currentRecipe = levels[level - 1].recipe;
+    resetCollected();
+
+    document.addEventListener("keydown", (e) => keys[e.key] = true);
+    document.addEventListener("keyup", (e) => keys[e.key] = false);
+    document.getElementById("restartBtn").addEventListener("click", restartGame);
+
+    function resetCollected() {
+      collected = {};
+      for (let atom in currentRecipe) {
+        collected[atom] = 0;
+      }
+    }
+
+    function drawStickman(x, y) {
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.arc(x + 20, y + 10, 10, 0, Math.PI * 2); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 20, y + 20); ctx.lineTo(x + 20, y + 40); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 20, y + 25); ctx.lineTo(x, y + 30);
+      ctx.moveTo(x + 20, y + 25); ctx.lineTo(x + 40, y + 30); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x + 20, y + 40); ctx.lineTo(x, y + 50);
+      ctx.moveTo(x + 20, y + 40); ctx.lineTo(x + 40, y + 50); ctx.stroke();
+    }
+
+    function spawnObject() {
+      const types = ["H", "O", "C", "N", "Na", "Cl", "K", "Ca", "S"];
+      const type = types[Math.floor(Math.random() * types.length)];
+      objects.push({ x: Math.random() * 580, y: 0, type });
+    }
+
+    function drawObjects() {
+      ctx.font = "20px Arial";
+      ctx.fillStyle = "yellow";
+      objects.forEach(obj => ctx.fillText(obj.type, obj.x, obj.y));
+    }
+
+    function updateObjects() {
+      objects.forEach(obj => obj.y += (2 + level * 0.5));
+      objects = objects.filter(obj => obj.y < 400);
+    }
+
+    function checkCollisions() {
+      objects.forEach((obj, i) => {
+        if (obj.x < stickman.x + stickman.width &&
+            obj.x + 20 > stickman.x &&
+            obj.y < stickman.y + stickman.height &&
+            obj.y + 20 > stickman.y) {
+          if (collected.hasOwnProperty(obj.type)) {
+            collected[obj.type]++;
+            score += 10;
+          } else {
+            hearts--;
+            updateHearts();
+            if (hearts <= 0) {
+              alert("Game Over! Try again.");
+              restartGame();
+              return;
+            }
+          }
+          objects.splice(i, 1);
+        }
+      });
+    }
+
+    function checkGoal() {
+      for (let atom in currentRecipe) {
+        if (collected[atom] < currentRecipe[atom]) return;
+      }
+      score += 50; // bonus points
+      alert(`You built ${levels[level - 1].name}! +50 points`);
+      nextLevel();
+    }
+
+    function nextLevel() {
+      level++;
+      if (level > levels.length) {
+        alert("Congratulations! You finished all 20 levels!");
+        restartGame();
+        return;
+      }
+      currentRecipe = levels[level - 1].recipe;
+      resetCollected();
+      updateUI();
+    }
+
+    function restartGame() {
+      level = 1;
+      score = 0;
+      hearts = 5;
+      currentRecipe = levels[level - 1].recipe;
+      resetCollected();
+      objects = [];
+      stickman.x = 280;
+      updateUI();
+      updateHearts();
+    }
+
+    function updateUI() {
+      document.getElementById("score").textContent = `Score: ${score} | Level ${level}`;
+      let goalText = `Goal: ${levels[level - 1].name} (`;
+      let parts = [];
+      for (let atom in currentRecipe) parts.push(`${currentRecipe[atom]}${atom}`);
+      goalText += parts.join(" + ") + ")";
+      document.getElementById("goal").textContent = goalText;
+    }
+
+    function updateHearts() {
+      document.getElementById("hearts").textContent = "♥".repeat(hearts);
+    }
+
+    function update() {
+      if (!gameActive) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (keys["ArrowLeft"] && stickman.x > 0) stickman.x -= 5;
+      if (keys["ArrowRight"] && stickman.x < canvas.width - stickman.width) stickman.x += 5;
+
+      drawStickman(stickman.x, stickman.y);
+      drawObjects();
+      updateObjects();
+      checkCollisions();
+      checkGoal();
+      updateUI();
+      requestAnimationFrame(update);
+    }
+
+    setInterval(spawnObject, 1500);
+    update();
+  </script>
+</body>
+</html>
