@@ -1,25 +1,98 @@
-// server/index.ts
-import express2 from "express";
-
-// server/routes.ts
+import express from "express";
 import { createServer } from "http";
-async function registerRoutes(app2) {
-  const httpServer = createServer(app2);
+import fs from "fs";
+import path from "path";
+import { createServer as createViteServer, createLogger } from "vite";
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { nanoid } from "nanoid";
+
+// ============ GEMINI API ROUTES ============
+async function registerRoutes(app) {
+  const httpServer = createServer(app);
+
+  // AI Tutor Chat Endpoint
+  app.post('/api/chat', async (req, res) => {
+    try {
+      const { message, mode = 'learning', context = '' } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+
+      if (!apiKey) {
+        return res.status(400).json({ 
+          error: 'Gemini API key not configured. Please set GEMINI_API_KEY environment variable.' 
+        });
+      }
+
+      if (!message) {
+        return res.status(400).json({ error: 'Message is required' });
+      }
+
+      // System prompt based on mode
+      const systemPrompts = {
+        learning: `You are SANKALP, an AI tutor for STEM education. Help students understand concepts clearly and simply. 
+                    Provide examples, hints, and step-by-step guidance. Use simple language suitable for grades 6-12.
+                    Context: ${context}`,
+        assessment: `You are SANKALP AI tutor in ASSESSMENT mode. Help students understand concepts but DO NOT give direct answers.
+                     Provide hints and guidance instead. Preserve academic integrity.
+                     Context: ${context}`
+      };
+
+      const systemPrompt = systemPrompts[mode] || systemPrompts.learning;
+
+      // Call Google Gemini API
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            system_instruction: {
+              parts: { text: systemPrompt }
+            },
+            contents: [
+              {
+                parts: [{ text: message }]
+              }
+            ],
+            safety_settings: [
+              {
+                category: 'HARM_CATEGORY_HARASSMENT',
+                threshold: 'BLOCK_MEDIUM_AND_ABOVE'
+              }
+            ]
+          })
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Gemini API error:', errorData);
+        return res.status(response.status).json({ 
+          error: errorData.error?.message || 'Gemini API request failed' 
+        });
+      }
+
+      const data = await response.json();
+      const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated';
+
+      res.json({ reply, mode, timestamp: new Date().toISOString() });
+    } catch (error) {
+      console.error('Chat endpoint error:', error);
+      res.status(500).json({ error: error.message || 'Internal server error' });
+    }
+  });
+
+  // Health check
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', gemini_configured: !!process.env.GEMINI_API_KEY });
+  });
+
   return httpServer;
 }
 
-// server/vite.ts
-import express from "express";
-import fs from "fs";
-import path2 from "path";
-import { createServer as createViteServer, createLogger } from "vite";
-
-// vite.config.ts
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
-var vite_config_default = defineConfig({
+// ============ VITE CONFIG ============
+const vite_config_default = defineConfig({
   plugins: [
     react(),
     runtimeErrorOverlay(),
@@ -49,11 +122,10 @@ var vite_config_default = defineConfig({
   }
 });
 
-// server/vite.ts
-import { nanoid } from "nanoid";
-var viteLogger = createLogger();
+// ============ LOGGER & UTILITIES ============
+const viteLogger = createLogger();
 function log(message, source = "express") {
-  const formattedTime = (/* @__PURE__ */ new Date()).toLocaleTimeString("en-US", {
+  const formattedTime = (new Date()).toLocaleTimeString("en-US", {
     hour: "numeric",
     minute: "2-digit",
     second: "2-digit",
@@ -61,7 +133,9 @@ function log(message, source = "express") {
   });
   console.log(`${formattedTime} [${source}] ${message}`);
 }
-async function setupVite(app2, server) {
+
+// ============ VITE SETUP ============
+async function setupVite(app, server) {
   const serverOptions = {
     middlewareMode: true,
     hmr: { server },
@@ -80,11 +154,11 @@ async function setupVite(app2, server) {
     server: serverOptions,
     appType: "custom"
   });
-  app2.use(vite.middlewares);
-  app2.use("*", async (req, res, next) => {
+  app.use(vite.middlewares);
+  app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
     try {
-      const clientTemplate = path2.resolve(
+      const clientTemplate = path.resolve(
         import.meta.dirname,
         "..",
         "client",
@@ -103,23 +177,25 @@ async function setupVite(app2, server) {
     }
   });
 }
-function serveStatic(app2) {
-  const distPath = path2.resolve(import.meta.dirname, "public");
+
+// ============ STATIC FILE SERVING ============
+function serveStatic(app) {
+  const distPath = path.resolve(import.meta.dirname, "public");
   if (!fs.existsSync(distPath)) {
     throw new Error(
       `Could not find the build directory: ${distPath}, make sure to build the client first`
     );
   }
-  app2.use(express.static(distPath));
-  app2.use("*", (_req, res) => {
-    res.sendFile(path2.resolve(distPath, "index.html"));
+  app.use(express.static(distPath));
+  app.use("*", (_req, res) => {
+    res.sendFile(path.resolve(distPath, "index.html"));
   });
 }
 
-// server/index.ts
-var app = express2();
-app.use(express2.json());
-app.use(express2.urlencoded({ extended: false }));
+// ============ MAIN SERVER ============
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 app.use((req, res, next) => {
   const start = Date.now();
   const path3 = req.path;
@@ -137,13 +213,14 @@ app.use((req, res, next) => {
         logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
       if (logLine.length > 80) {
-        logLine = logLine.slice(0, 79) + "\u2026";
+        logLine = logLine.slice(0, 79) + "…";
       }
       log(logLine);
     }
   });
   next();
 });
+
 (async () => {
   const server = await registerRoutes(app);
   app.use((err, _req, res, _next) => {
@@ -164,5 +241,6 @@ app.use((req, res, next) => {
     reusePort: true
   }, () => {
     log(`serving on port ${port}`);
+    log(`Gemini API: ${process.env.GEMINI_API_KEY ? '✅ Configured' : '⚠️ Not configured'}`);
   });
 })();
